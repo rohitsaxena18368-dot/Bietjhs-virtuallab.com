@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Op-Amp Slew Rate Measurement - Virtual Lab</title>
+  <!-- jsPDF Library for PDF Report Download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 20px; line-height: 1.5; }
+    .lab-container { max-width: 900px; margin: 0 auto; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h2 { text-align: center; color: #38bdf8; margin-bottom: 20px; }
+    
+    .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    .student-info input { padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; width: 100%; }
+    
+    .canvas-card { position: relative; background: #000; border: 2px solid #334155; border-radius: 8px; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 340px; cursor: crosshair; }
+    
+    .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
+    .control-card { background: #0f172a; padding: 12px 15px; border-radius: 8px; border: 1px solid #334155; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; color: #94a3b8; font-weight: 600; }
+    select, input[type=range] { width: 100%; }
+    select { padding: 8px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #475569; }
+    input[type=range] { accent-color: #38bdf8; }
+    
+    .cursor-controls { margin-top: 15px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    
+    .results-panel { margin-top: 20px; padding: 15px; background: #0284c7; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .results-text { font-size: 14px; font-weight: bold; }
+    .btn-download { background: #10b981; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+    .btn-download:hover { background: #059669; }
+    
+    .legend { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<div class="lab-container">
+  <h2>⚡ Op-Amp Slew Rate Measurement Virtual Lab</h2>
+  
+  <!-- Student Metadata Input -->
+  <div class="student-info">
+    <input type="text" id="studentName" placeholder="Student Name (e.g. Aman Sharma)" value="Aman Sharma">
+    <input type="text" id="rollNo" placeholder="Roll No / Student ID" value="EC-2026-042">
+  </div>
+
+  <!-- Oscilloscope Canvas Display -->
+  <div class="canvas-card">
+    <canvas id="oscilloscope" width="850" height="340"></canvas>
+  </div>
+  
+  <div class="legend">
+    <div class="legend-item"><span class="dot" style="background: #38bdf8;"></span> CH1: Input Square Wave</div>
+    <div class="legend-item"><span class="dot" style="background: #facc15;"></span> CH2: Output Slew-Limited</div>
+    <div class="legend-item"><span class="dot" style="background: #ec4899;"></span> Cursor 1 (t1)</div>
+    <div class="legend-item"><span class="dot" style="background: #22c55e;"></span> Cursor 2 (t2)</div>
+  </div>
+
+  <!-- Parameter Controls -->
+  <div class="controls-grid">
+    <div class="control-card">
+      <label>Op-Amp Model Presets</label>
+      <select id="opampSelect">
+        <option value="0.5">IC 741 (SR = 0.5 V/µs)</option>
+        <option value="0.3">LM358 (SR = 0.3 V/µs)</option>
+        <option value="13.0">TL081 (SR = 13.0 V/µs)</option>
+        <option value="125.0">AD825 (High Speed = 125 V/µs)</option>
+        <option value="custom">Custom Slew Rate</option>
+      </select>
+    </div>
+
+    <div class="control-card">
+      <label>Slew Rate Limit: <span id="srVal">0.5</span> V/µs</label>
+      <input type="range" id="srInput" min="0.1" max="20" step="0.1" value="0.5">
+    </div>
+
+    <div class="control-card">
+      <label>Signal Frequency: <span id="freqVal">10</span> kHz</label>
+      <input type="range" id="freqInput" min="1" max="50" step="1" value="10">
+    </div>
+
+    <div class="control-card">
+      <label>Peak-to-Peak Amplitude: <span id="ampVal">4</span> Vp-p</label>
+      <input type="range" id="ampInput" min="1" max="10" step="0.5" value="4">
+    </div>
+  </div>
+
+  <!-- Cursor Slider Controls -->
+  <div class="cursor-controls">
+    <div class="control-card">
+      <label style="color: #ec4899;">Cursor 1 Position (t1): <span id="c1Val">50</span> µs</label>
+      <input type="range" id="c1Input" min="0" max="200" step="1" value="50">
+    </div>
+    <div class="control-card">
+      <label style="color: #22c55e;">Cursor 2 Position (t2): <span id="c2Val">58</span> µs</label>
+      <input type="range" id="c2Input" min="0" max="200" step="1" value="58">
+    </div>
+  </div>
+
+  <!-- Results and PDF Generation -->
+  <div class="results-panel">
+    <div class="results-text" id="calcResult">Calculating measurements...</div>
+    <button class="btn-download" onclick="generatePDF()">📄 Download Lab Report (PDF)</button>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('oscilloscope');
+  const ctx = canvas.getContext('2d');
+
+  // Input Elements
+  const opampSelect = document.getElementById('opampSelect');
+  const srInput = document.getElementById('srInput');
+  const freqInput = document.getElementById('freqInput');
+  const ampInput = document.getElementById('ampInput');
+  const c1Input = document.getElementById('c1Input');
+  const c2Input = document.getElementById('c2Input');
+
+  // Measurement Global Variables
+  let measuredDeltaV = 0;
+  let measuredDeltaT = 0;
+  let measuredSR = 0;
+
+  // Handle Op-Amp Model Selection
+  opampSelect.addEventListener('change', (e) => {
+    if(e.target.value !== 'custom') {
+      srInput.value = e.target.value;
+      simulate();
+    }
+  });
+
+  function drawGrid() {
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    for(let x=0; x<canvas.width; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+    for(let y=0; y<canvas.height; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+  }
+
+  function simulate() {
+    const SR = parseFloat(srInput.value); 
+    const freq = parseFloat(freqInput.value); 
+    const amp = parseFloat(ampInput.value); 
+    const t1 = parseFloat(c1Input.value);
+    const t2 = parseFloat(c2Input.value);
+
+    document.getElementById('srVal').innerText = SR;
+    document.getElementById('freqVal').innerText = freq;
+    document.getElementById('ampVal').innerText = amp;
+    document.getElementById('c1Val').innerText = t1;
+    document.getElementById('c2Val').innerText = t2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+
+    const centerY = canvas.height / 2;
+    const scaleY = 25; // 25 pixels per Volt
+    const totalTimeUs = 200; // Screen time span = 200 microseconds
+    const dt = totalTimeUs / canvas.width;
+
+    let vOutArray = [];
+    let vOut = 0;
+
+    // Render CH1: Square Wave Input (Blue)
+    ctx.beginPath();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    for(let x=0; x<canvas.width; x++) {
+      let t = x * dt;
+      let period = 1000 / freq;
+      let vIn = ( (t % period) < period/2 ) ? amp/2 : -amp/2;
+      let y = centerY - (vIn * scaleY);
+      if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Render CH2: Slew-Limited Waveform (Yellow)
+    ctx.beginPath();
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2.5;
+
+    for(let x=0; x<canvas.width; x++) {
+      let t = x * dt;
+      let period = 1000 / freq;
+      let vIn = ( (t % period) < period/2 ) ? amp/2 : -amp/2;
+
+      let maxDeltaV = SR * dt;
+      let diff = vIn - vOut;
+      if (Math.abs(diff) > maxDeltaV) {
+        vOut += Math.sign(diff) * maxDeltaV;
+      } else {
+        vOut = vIn;
+      }
+      
+      vOutArray.push(vOut);
+      let y = centerY - (vOut * scaleY);
+      if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Cursors Rendering
+    const x1Pixel = (t1 / totalTimeUs) * canvas.width;
+    const x2Pixel = (t2 / totalTimeUs) * canvas.width;
+
+    const v1Val = vOutArray[Math.min(Math.floor(x1Pixel), canvas.width - 1)] || 0;
+    const v2Val = vOutArray[Math.min(Math.floor(x2Pixel), canvas.width - 1)] || 0;
+
+    // Cursor 1 (Pink)
+    ctx.strokeStyle = '#ec4899';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x1Pixel, 0); ctx.lineTo(x1Pixel, canvas.height);
+    ctx.moveTo(0, centerY - (v1Val * scaleY)); ctx.lineTo(canvas.width, centerY - (v1Val * scaleY));
+    ctx.stroke();
+
+    // Cursor 2 (Green)
+    ctx.strokeStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.moveTo(x2Pixel, 0); ctx.lineTo(x2Pixel, canvas.height);
+    ctx.moveTo(0, centerY - (v2Val * scaleY)); ctx.lineTo(canvas.width, centerY - (v2Val * scaleY));
+    ctx.stroke();
+    ctx.setLineDash([]); 
+
+    // Calculations
+    measuredDeltaT = Math.abs(t2 - t1);
+    measuredDeltaV = Math.abs(v2Val - v1Val);
+    measuredSR = measuredDeltaT > 0 ? (measuredDeltaV / measuredDeltaT) : 0;
+
+    document.getElementById('calcResult').innerHTML = 
+      `ΔV: ${measuredDeltaV.toFixed(2)} V | Δt: ${measuredDeltaT.toFixed(2)} µs | Calculated Slew Rate = <b>${measuredSR.toFixed(2)} V/µs</b>`;
+  }
+
+  // PDF Report Generation
+  function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const name = document.getElementById('studentName').value || 'Student';
+    const roll = document.getElementById('rollNo').value || 'N/A';
+    const date = new Date().toLocaleString();
+
+    // PDF Title
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text("Virtual Lab Report: Op-Amp Slew Rate Measurement", 15, 20);
+
+    // Student Info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.text(`Student Name: ${name}`, 15, 42);
+    doc.text(`Roll No / ID: ${roll}`, 15, 50);
+    doc.text(`Date & Time: ${date}`, 15, 58);
+
+    doc.line(15, 63, 195, 63);
+
+    // Parameters
+    doc.setFontSize(13);
+    doc.text("1. Simulation Parameters", 15, 73);
+    doc.setFontSize(10);
+    doc.text(`• Op-Amp Model / Slew Rate Setting: ${srInput.value} V/µs`, 20, 82);
+    doc.text(`• Input Frequency: ${freqInput.value} kHz`, 20, 90);
+    doc.text(`• Input Amplitude: ${ampInput.value} Vp-p`, 20, 98);
+
+    // Measurements
+    doc.setFontSize(13);
+    doc.text("2. Cursor Measurements & Calculated Results", 15, 112);
+    doc.setFontSize(10);
+    doc.text(`• Measured Time Difference (Δt): ${measuredDeltaT.toFixed(2)} µs`, 20, 121);
+    doc.text(`• Measured Voltage Difference (ΔV): ${measuredDeltaV.toFixed(2)} V`, 20, 129);
+    doc.text(`• Experimental Slew Rate (ΔV / Δt): ${measuredSR.toFixed(2)} V/µs`, 20, 137);
+
+    // Image Capture
+    doc.setFontSize(13);
+    doc.text("3. Oscilloscope Waveform Display", 15, 152);
+    const canvasImgData = canvas.toDataURL('image/png');
+    doc.addImage(canvasImgData, 'PNG', 15, 158, 180, 72);
+
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Generated by Op-Amp Virtual Lab Platform", 15, 285);
+
+    doc.save(`SlewRate_LabReport_${roll}.pdf`);
+  }
+
+  // Event Listeners
+  [srInput, freqInput, ampInput, c1Input, c2Input].forEach(el => el.addEventListener('input', () => {
+    opampSelect.value = 'custom';
+    simulate();
+  }));
+
+  simulate();
+</script>
+
+</body>
+</html>
